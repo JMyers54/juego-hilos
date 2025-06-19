@@ -14,50 +14,103 @@ class Juego:
             self.y += 20
 
     def iniciarJuego(self, *args):
+        if self.juego_activo:
+            return
+        self.juego_activo = True
         self.btnIniciar.config(state="disabled")
+        self.x = 0
         hilo = th.Thread(target=self.lanzarTuberias)
         hilo.start()
         self.mover_jugador()
 
     def mover_jugador(self):
+        if not self.juego_activo:
+            return
         self.lienzo.delete("jugador")
         self.dibujar_pajaro()
         self.ventana.after(20, self.mover_jugador)
 
     def lanzarTuberias(self):
         try:
-            while True:
-                espacio = 150
-                altura_superior = random.randint(100, 300)
-                altura_inferior = 600 - altura_superior - espacio
+            while self.juego_activo:
+                obstaculos = self.crear_obstaculo()
                 x = 800
                 ancho = 60
 
-                tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="green", tags="tubo")
-                tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="green", tags="tubo")
-
-                while x + ancho > 0:
-                    self.lienzo.move(tubo_sup, -5, 0)
-                    self.lienzo.move(tubo_inf, -5, 0)
+                while x + ancho > 0 and self.juego_activo:
+                    for obs in obstaculos:
+                        self.lienzo.move(obs, -5, 0)
+                        if self.colision(obs):
+                            self.guardar_puntaje()
+                            messagebox.showinfo("Fin del juego", f"¡Perdiste! Puntaje: {self.puntaje}")
+                            self.fin_del_juego()
+                            return
                     x -= 5
-
-                    if self.colision(tubo_sup) or self.colision(tubo_inf):
-                        messagebox.showinfo("Fin del juego", f"¡Perdiste! Puntaje: {self.puntaje}")
-                        self.guardar_puntaje()
-                        self.ventana.destroy()
-                        return
-
                     time.sleep(self.velocidad)
 
-                self.puntaje += 1
-                self.lblPuntaje.config(text="Puntaje = " + str(self.puntaje))
-                if self.puntaje % 5 == 0 and self.velocidad > 0.004:
-                    self.velocidad -= 0.001
+                if self.juego_activo:
+                    self.puntaje += 1
+                    self.lblPuntaje.config(text="Puntaje = " + str(self.puntaje))
+                    if self.puntaje % 3 == 0 and self.velocidad > 0.004:
+                        self.velocidad -= 0.002
 
-                self.lienzo.delete(tubo_sup)
-                self.lienzo.delete(tubo_inf)
+                for obs in obstaculos:
+                    self.lienzo.delete(obs)
+
         except Exception as e:
             print("Error en lanzarTuberias:", e)
+
+    def crear_obstaculo(self):
+        tipo = "tubo"
+        espacio = 100
+        altura_superior = random.randint(100, 300)
+        altura_inferior = 600 - altura_superior - espacio
+        x = 800
+        ancho = 60
+        obstaculos = []
+
+        if tipo == "tubo":
+            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="green", tags="tubo")
+            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="green", tags="tubo")
+            obstaculos = [tubo_sup, tubo_inf]
+
+        elif tipo == "doble":
+            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior + 40, fill="darkgreen", tags="tubo")
+            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior - 40, x + ancho, 600, fill="darkgreen", tags="tubo")
+            obstaculos = [tubo_sup, tubo_inf]
+
+        elif tipo == "movil":
+            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="purple", tags="tubo")
+            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="purple", tags="tubo")
+            obstaculos = [tubo_sup, tubo_inf]
+
+            def mover():
+                offset = random.choice([-5, 5])
+                while self.juego_activo and self.lienzo.coords(tubo_sup):
+                    self.lienzo.move(tubo_sup, 0, offset)
+                    self.lienzo.move(tubo_inf, 0, -offset)
+                    time.sleep(0.2)
+
+            th.Thread(target=mover, daemon=True).start()
+
+        elif tipo == "circulo":
+            radio = 30
+            y = random.randint(100, 500)
+            color = random.choice(["red", "black", "blue"])
+            circulo = self.lienzo.create_oval(x, y, x + 2 * radio, y + 2 * radio, fill=color, tags="tubo")
+            obstaculos = [circulo]
+
+        return obstaculos
+
+    def fin_del_juego(self):
+        self.juego_activo = False
+        self.btnIniciar.config(state="normal")
+        self.puntaje = 0
+        self.velocidad = 0.016
+        self.x = 0
+        self.y = 0
+        self.lblPuntaje.config(text="Puntaje = 0")
+        self.lienzo.delete("tubo")
 
     def colision(self, obstaculo_id):
         jugador_coords = self.lienzo.bbox("jugador")
@@ -171,6 +224,7 @@ class Juego:
         self.puntaje = 0
         self.velocidad = 0.016
         self.usuario_actual = "admin"
+        self.juego_activo = False
 
         self.jugadores = [{"usuario": "admin", "contra": "123", "puntaje": 0}]
 
@@ -200,5 +254,8 @@ class Juego:
         self.dibujar_pajaro()
 
         self.ventana.mainloop()
+
+
+
 
 
