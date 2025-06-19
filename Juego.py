@@ -33,7 +33,6 @@ class Juego:
                 x = 800
                 ancho = 60
 
-                # Crear tubos
                 tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="green", tags="tubo")
                 tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="green", tags="tubo")
 
@@ -42,7 +41,6 @@ class Juego:
                     self.lienzo.move(tubo_inf, -5, 0)
                     x -= 5
 
-                    # Verificar colisión
                     if self.colision(tubo_sup) or self.colision(tubo_inf):
                         messagebox.showinfo("Fin del juego", f"¡Perdiste! Puntaje: {self.puntaje}")
                         self.ventana.destroy()
@@ -76,16 +74,9 @@ class Juego:
         x = 60
         y = 300 + self.y
 
-        # Cuerpo (óvalo amarillo)
         self.lienzo.create_oval(x-15, y-15, x+15, y+15, fill="yellow", outline="black", width=2, tags="jugador")
-
-        # Pico (triángulo rojo)
         self.lienzo.create_polygon(x+15, y, x+25, y-5, x+25, y+5, fill="red", outline="black", tags="jugador")
-
-        # Ojo (círculo blanco)
         self.lienzo.create_oval(x+5, y-10, x+10, y-5, fill="white", outline="black", tags="jugador")
-
-        # Pupila
         self.lienzo.create_oval(x+7, y-8, x+9, y-6, fill="black", tags="jugador")
 
     def __init__(self):
@@ -108,8 +99,13 @@ class Juego:
         self.btnIniciar.place(relx=0.5, rely=0.95, anchor="center")
         self.btnIniciar.bind("<Button-1>", self.iniciarJuego)
 
+        # ✅ Teclas permitidas: Flechas y W/S en mayúscula y minúscula
         self.ventana.bind("<Up>", self.subir)
         self.ventana.bind("<Down>", self.bajar)
+        self.ventana.bind("w", self.subir)
+        self.ventana.bind("s", self.bajar)
+        self.ventana.bind("W", self.subir)
+        self.ventana.bind("S", self.bajar)
 
         self.dibujar_pajaro()
 
