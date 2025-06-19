@@ -43,6 +43,7 @@ class Juego:
 
                     if self.colision(tubo_sup) or self.colision(tubo_inf):
                         messagebox.showinfo("Fin del juego", f"¡Perdiste! Puntaje: {self.puntaje}")
+                        self.guardar_puntaje()
                         self.ventana.destroy()
                         return
 
@@ -79,6 +80,87 @@ class Juego:
         self.lienzo.create_oval(x+5, y-10, x+10, y-5, fill="white", outline="black", tags="jugador")
         self.lienzo.create_oval(x+7, y-8, x+9, y-6, fill="black", tags="jugador")
 
+    def abrir_cuentas(self):
+        ventana_cuentas = tk.Toplevel(self.ventana)
+        ventana_cuentas.title("Cuentas")
+        ventana_cuentas.geometry("250x150")
+
+        tk.Label(ventana_cuentas, text="Bienvenido").pack(pady=10)
+
+        btn_login = tk.Button(ventana_cuentas, text="Iniciar Sesión", command=self.ventana_login)
+        btn_login.pack(pady=5)
+
+        btn_registro = tk.Button(ventana_cuentas, text="Registrarse", command=self.ventana_registro)
+        btn_registro.pack(pady=5)
+
+    def ventana_login(self):
+        win = tk.Toplevel(self.ventana)
+        win.title("Iniciar Sesión")
+        win.geometry("250x200")
+
+        tk.Label(win, text="Usuario").pack()
+        entry_usuario = tk.Entry(win)
+        entry_usuario.pack()
+
+        tk.Label(win, text="Contraseña").pack()
+        entry_contra = tk.Entry(win, show="*")
+        entry_contra.pack()
+
+        def login():
+            user = entry_usuario.get()
+            contra = entry_contra.get()
+            for jugador in self.jugadores:
+                if jugador["usuario"] == user and jugador.get("contra") == contra:
+                    self.usuario_actual = user
+                    messagebox.showinfo("Login exitoso", f"Bienvenido {user}")
+                    win.destroy()
+                    return
+            messagebox.showerror("Error", "Usuario o contraseña incorrectos")
+
+        tk.Button(win, text="Entrar", command=login).pack(pady=10)
+
+    def ventana_registro(self):
+        win = tk.Toplevel(self.ventana)
+        win.title("Registro")
+        win.geometry("250x200")
+
+        tk.Label(win, text="Nuevo usuario").pack()
+        entry_usuario = tk.Entry(win)
+        entry_usuario.pack()
+
+        tk.Label(win, text="Contraseña").pack()
+        entry_contra = tk.Entry(win, show="*")
+        entry_contra.pack()
+
+        def registrar():
+            user = entry_usuario.get()
+            contra = entry_contra.get()
+            for jugador in self.jugadores:
+                if jugador["usuario"] == user:
+                    messagebox.showerror("Error", "Usuario ya existe")
+                    return
+            self.jugadores.append({"usuario": user, "contra": contra, "puntaje": 0})
+            messagebox.showinfo("Registro exitoso", f"Usuario {user} creado")
+            win.destroy()
+
+        tk.Button(win, text="Registrar", command=registrar).pack(pady=10)
+
+    def mostrar_puntajes(self):
+        win = tk.Toplevel(self.ventana)
+        win.title("Puntajes")
+        win.geometry("300x300")
+
+        tk.Label(win, text="Jugadores", font=("Arial", 12, "bold")).pack(pady=10)
+
+        for jugador in self.jugadores:
+            texto = f"{jugador['usuario']} - Puntaje: {jugador.get('puntaje', 0)}"
+            tk.Label(win, text=texto).pack()
+
+    def guardar_puntaje(self):
+        for jugador in self.jugadores:
+            if jugador["usuario"] == self.usuario_actual:
+                jugador["puntaje"] = max(jugador.get("puntaje", 0), self.puntaje)
+
     def __init__(self):
         self.ventana = tk.Tk()
         self.ventana.title("Flappy Bird Geométrico")
@@ -87,7 +169,10 @@ class Juego:
 
         self.y = 0
         self.puntaje = 0
-        self.velocidad = 0.016  # segundos entre frames
+        self.velocidad = 0.016
+        self.usuario_actual = "admin"
+
+        self.jugadores = [{"usuario": "admin", "contra": "123", "puntaje": 0}]
 
         self.lienzo = tk.Canvas(self.ventana, width=800, height=600, bg="skyblue")
         self.lienzo.place(x=0, y=0)
@@ -99,7 +184,12 @@ class Juego:
         self.btnIniciar.place(relx=0.5, rely=0.95, anchor="center")
         self.btnIniciar.bind("<Button-1>", self.iniciarJuego)
 
-        # ✅ Teclas permitidas: Flechas y W/S en mayúscula y minúscula
+        self.btnCuentas = tk.Button(self.lienzo, text="CUENTAS", font=("Arial", 12), command=self.abrir_cuentas)
+        self.btnCuentas.place(relx=0.35, rely=0.95, anchor="center")
+
+        self.btnPuntajes = tk.Button(self.lienzo, text="PUNTAJES", font=("Arial", 12), command=self.mostrar_puntajes)
+        self.btnPuntajes.place(relx=0.65, rely=0.95, anchor="center")
+
         self.ventana.bind("<Up>", self.subir)
         self.ventana.bind("<Down>", self.bajar)
         self.ventana.bind("w", self.subir)
@@ -110,4 +200,5 @@ class Juego:
         self.dibujar_pajaro()
 
         self.ventana.mainloop()
+
 
