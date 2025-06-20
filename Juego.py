@@ -3,6 +3,8 @@ from tkinter import messagebox
 import threading as th
 import time
 import random
+from PIL import Image, ImageTk
+import pygame.mixer as mixer
 
 class Juego:
     def subir(self, event):
@@ -27,7 +29,7 @@ class Juego:
         if not self.juego_activo:
             return
         self.lienzo.delete("jugador")
-        self.dibujar_pajaro()
+        self.dibujar_pez()
         self.ventana.after(20, self.mover_jugador)
 
     def lanzarTuberias(self):
@@ -41,6 +43,7 @@ class Juego:
                     for obs in obstaculos:
                         self.lienzo.move(obs, -5, 0)
                         if self.colision(obs):
+                            self.sonido_choque.play()  # Sonido al chocar
                             self.guardar_puntaje()
                             messagebox.showinfo("Fin del juego", f"¡Perdiste! Puntaje: {self.puntaje}")
                             self.fin_del_juego()
@@ -51,6 +54,7 @@ class Juego:
                 if self.juego_activo:
                     self.puntaje += 1
                     self.lblPuntaje.config(text="Puntaje = " + str(self.puntaje))
+                    self.sonido_paso.play()  # Sonido al pasar el tubo
                     if self.puntaje % 3 == 0 and self.velocidad > 0.004:
                         self.velocidad -= 0.002
 
@@ -61,46 +65,14 @@ class Juego:
             print("Error en lanzarTuberias:", e)
 
     def crear_obstaculo(self):
-        tipo = "tubo"
         espacio = 100
         altura_superior = random.randint(100, 300)
         altura_inferior = 600 - altura_superior - espacio
         x = 800
         ancho = 60
-        obstaculos = []
-
-        if tipo == "tubo":
-            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="green", tags="tubo")
-            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="green", tags="tubo")
-            obstaculos = [tubo_sup, tubo_inf]
-
-        elif tipo == "doble":
-            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior + 40, fill="darkgreen", tags="tubo")
-            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior - 40, x + ancho, 600, fill="darkgreen", tags="tubo")
-            obstaculos = [tubo_sup, tubo_inf]
-
-        elif tipo == "movil":
-            tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="purple", tags="tubo")
-            tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="purple", tags="tubo")
-            obstaculos = [tubo_sup, tubo_inf]
-
-            def mover():
-                offset = random.choice([-5, 5])
-                while self.juego_activo and self.lienzo.coords(tubo_sup):
-                    self.lienzo.move(tubo_sup, 0, offset)
-                    self.lienzo.move(tubo_inf, 0, -offset)
-                    time.sleep(0.2)
-
-            th.Thread(target=mover, daemon=True).start()
-
-        elif tipo == "circulo":
-            radio = 30
-            y = random.randint(100, 500)
-            color = random.choice(["red", "black", "blue"])
-            circulo = self.lienzo.create_oval(x, y, x + 2 * radio, y + 2 * radio, fill=color, tags="tubo")
-            obstaculos = [circulo]
-
-        return obstaculos
+        tubo_sup = self.lienzo.create_rectangle(x, 0, x + ancho, altura_superior, fill="green", tags="tubo")
+        tubo_inf = self.lienzo.create_rectangle(x, 600 - altura_inferior, x + ancho, 600, fill="green", tags="tubo")
+        return [tubo_sup, tubo_inf]
 
     def fin_del_juego(self):
         self.juego_activo = False
@@ -122,16 +94,18 @@ class Juego:
         jx1, jy1, jx2, jy2 = jugador_coords
         ox1, oy1, ox2, oy2 = obstaculo_coords
 
+        margen = 20  # reduce la hitbox
+        jx1 += margen
+        jy1 += margen
+        jx2 -= margen
+        jy2 -= margen
+
         return not (jx2 < ox1 or jx1 > ox2 or jy2 < oy1 or jy1 > oy2)
 
-    def dibujar_pajaro(self):
+    def dibujar_pez(self):
         x = 60
         y = 300 + self.y
-
-        self.lienzo.create_oval(x-15, y-15, x+15, y+15, fill="yellow", outline="black", width=2, tags="jugador")
-        self.lienzo.create_polygon(x+15, y, x+25, y-5, x+25, y+5, fill="red", outline="black", tags="jugador")
-        self.lienzo.create_oval(x+5, y-10, x+10, y-5, fill="white", outline="black", tags="jugador")
-        self.lienzo.create_oval(x+7, y-8, x+9, y-6, fill="black", tags="jugador")
+        self.lienzo.create_image(x, y, image=self.pez_img, tags="jugador")
 
     def abrir_cuentas(self):
         ventana_cuentas = tk.Toplevel(self.ventana)
@@ -216,7 +190,7 @@ class Juego:
 
     def __init__(self):
         self.ventana = tk.Tk()
-        self.ventana.title("Flappy Bird Geométrico")
+        self.ventana.title("Flappy Fish")
         self.ventana.config(width=800, height=600)
         self.ventana.resizable(0, 0)
 
@@ -225,11 +199,22 @@ class Juego:
         self.velocidad = 0.016
         self.usuario_actual = "admin"
         self.juego_activo = False
-
         self.jugadores = [{"usuario": "admin", "contra": "123", "puntaje": 0}]
 
-        self.lienzo = tk.Canvas(self.ventana, width=800, height=600, bg="skyblue")
+        # Inicializar sonidos
+        mixer.init()
+        self.sonido_paso = mixer.Sound("juego-hilos\sounds\WhatsApp Audio 2025-06-19 at 7.11.06 PM.mpeg")
+        self.sonido_choque = mixer.Sound("juego-hilos\sounds\WhatsApp Audio 2025-06-19 at 7.14.14 PM.mpeg")
+
+        self.lienzo = tk.Canvas(self.ventana, width=800, height=600)
         self.lienzo.place(x=0, y=0)
+
+        fondo_img = Image.open(r"juego-hilos\icons\agua.png.png").resize((800, 600))
+        self.fondo_img = ImageTk.PhotoImage(fondo_img)
+        self.lienzo.create_image(0, 0, anchor="nw", image=self.fondo_img)
+
+        pez = Image.open(r"juego-hilos\icons\a-single-fish-in-pixel-art-style-vector-removebg-preview.png").resize((100, 100))
+        self.pez_img = ImageTk.PhotoImage(pez)
 
         self.lblPuntaje = tk.Label(self.lienzo, text="Puntaje = 0", font=("Arial", 14), bg="skyblue")
         self.lblPuntaje.place(relx=0.5, y=30, anchor="center")
@@ -251,11 +236,5 @@ class Juego:
         self.ventana.bind("W", self.subir)
         self.ventana.bind("S", self.bajar)
 
-        self.dibujar_pajaro()
-
+        self.dibujar_pez()
         self.ventana.mainloop()
-
-
-
-
-
