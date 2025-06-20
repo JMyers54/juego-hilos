@@ -1,4 +1,4 @@
-from Juego import Juego
+from Views.Juego import Juego
 
 class Main:
     
